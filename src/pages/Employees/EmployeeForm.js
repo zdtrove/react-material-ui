@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Grid } from '@material-ui/core'
 import { useForm, Form } from '../../components/useForm'
 import Controls from '../../components/controls'
-import { getDepartmentCollection } from '../../services/employee.service'
+import * as employeeService from '../../services/employee.service'
 
 const genderItems = [
     { id: 'male', title: 'Male' },
@@ -22,27 +22,53 @@ const initialValues = {
     isPermanent: false
 }
 
-const EmployeeForm = () => {
-    const validate = () => {
-        let temp = {}
-        temp.fullName = values.fullName ? "" : "This field is required"
-        temp.email = (/$|.+@.+..+/).test(values.email) ? "" : "Email is not valid"
-        temp.mobile = values.fullName.length > 9 ? "" : "Minimum 10 numbers required"
-        temp.departmentId = values.departmentId.length !== 0 ? "" : "This field is required"
+const EmployeeForm = props => {
+    const { addOrEdit, recordForEdit } = props
+
+    const validate = (fieldValues = values) => {
+        let temp = {...errors}
+        if ('fullName' in fieldValues)
+            temp.fullName = fieldValues.fullName ? "" : "This field is required"
+        if ('email' in fieldValues)
+            temp.email = (/$^|.+@.+..+/).test(fieldValues.email) ? "" : "Email is not valid"
+        if ('mobile' in fieldValues)
+            temp.mobile = fieldValues.mobile.length > 9 ? "" : "Minimum 10 numbers required"
+        if ('departmentId' in fieldValues)
+            temp.departmentId = fieldValues.departmentId.length !== 0 ? "" : "This field is required"
         setErrors({
             ...temp
         })
+
+        if (fieldValues == values)
+            return Object.values(temp).every(x => x === "")
     }
     const {
         values,
         setValues,
         errors,
         setErrors,
-        handleInputChange
-    } = useForm(initialValues)
+        handleInputChange,
+        resetForm
+    } = useForm(initialValues, true, validate)
+
+    const handleSubmit = e => {
+        e.preventDefault()
+        console.log(errors)
+        if (validate()) {
+            addOrEdit(values, resetForm)
+        }
+    }
+
+    useEffect(() => {
+        if (recordForEdit) {
+            setValues({
+                ...recordForEdit
+            })
+        }
+    }, [recordForEdit])
 
     return (
-        <Form>
+        <Form onSubmit={handleSubmit}>
             <Grid container>
                 <Grid item xs={6}>
                     <Controls.Input
@@ -50,6 +76,7 @@ const EmployeeForm = () => {
                         label="Full Name"
                         value={values.fullName}
                         onChange={handleInputChange}
+                        error={errors.fullName}
                     />
                     <Controls.Input
                         variant="outlined"
@@ -57,6 +84,7 @@ const EmployeeForm = () => {
                         name="email"
                         value={values.email}
                         onChange={handleInputChange}
+                        error={errors.email}
                     />
                     <Controls.Input
                         variant="outlined"
@@ -64,6 +92,7 @@ const EmployeeForm = () => {
                         name="mobile"
                         value={values.mobile}
                         onChange={handleInputChange}
+                        error={errors.mobile}
                     />
                     <Controls.Input
                         variant="outlined"
@@ -86,7 +115,8 @@ const EmployeeForm = () => {
                         label="Department"
                         value={values.departmentId}
                         onChange={handleInputChange}
-                        options={getDepartmentCollection()}
+                        options={employeeService.getDepartmentCollection()}
+                        error={errors.departmentId}
                     />
                     <Controls.DatePicker
                         name="hireDate"
@@ -102,11 +132,13 @@ const EmployeeForm = () => {
                     />
                     <div>
                         <Controls.Button
+                            type="submit"
                             text="Submit"
                         />
                         <Controls.Button
                             text="Reset"
                             color="default"
+                            onClick={resetForm}
                         />
                     </div>
                 </Grid>
